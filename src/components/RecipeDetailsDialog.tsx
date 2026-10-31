@@ -4,13 +4,16 @@ import {
   Check,
   Clock3,
   Heart,
-  UsersRound,
   X,
 } from 'lucide-react'
 import type { Recipe } from '../types/recipe'
+import { scaleIngredientAmount } from '../utils/ingredientScaling'
+import { ServingsSelector } from './ServingsSelector'
 
 interface RecipeDetailsDialogProps {
   recipe: Recipe
+  servings: number
+  onServingsChange: (value: number) => void
   isFavorite: boolean
   onToggleFavorite: () => void
   onClose: () => void
@@ -18,6 +21,8 @@ interface RecipeDetailsDialogProps {
 
 export function RecipeDetailsDialog({
   recipe,
+  servings,
+  onServingsChange,
   isFavorite,
   onToggleFavorite,
   onClose,
@@ -94,9 +99,10 @@ export function RecipeDetailsDialog({
 
             <div className="recipe-meta">
               <span><Clock3 size={16} /> {recipe.prepTimeMinutes} min</span>
-              <span><UsersRound size={16} /> Serves {recipe.servings}</span>
               <span className="difficulty-pill">{recipe.difficulty}</span>
             </div>
+
+            <ServingsSelector value={servings} onChange={onServingsChange} />
 
             <div className="recipe-content-divider" />
 
@@ -112,13 +118,19 @@ export function RecipeDetailsDialog({
                     return (
                       <li
                         className={isInPantry ? 'is-in-pantry' : ''}
-                        key={`${ingredient.name}-${ingredient.amount}`}
+                        key={ingredient.name}
                       >
                         <span className="ingredient-check">
                           {isInPantry && <Check size={11} />}
                         </span>
                         <span>{ingredient.name}</span>
-                        <span className="ingredient-amount">{ingredient.amount}</span>
+                        <span className="ingredient-amount">
+                          {scaleIngredientAmount(
+                            ingredient,
+                            servings,
+                            recipe.baseServings ?? recipe.servings ?? 2,
+                          )}
+                        </span>
                       </li>
                     )
                   })}

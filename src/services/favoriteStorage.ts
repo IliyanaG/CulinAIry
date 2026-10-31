@@ -1,8 +1,11 @@
 import type { Recipe } from '../types/recipe'
+import { generatedRecipeImageUrl } from '../data/recipeTemplates'
 
 const FAVORITES_KEY = 'culinairy:favorites'
 
-function isRecipe(value: unknown): value is Recipe {
+type StoredRecipe = Omit<Recipe, 'imageUrl'> & { imageUrl?: string }
+
+function isRecipe(value: unknown): value is StoredRecipe {
   if (typeof value !== 'object' || value === null) return false
 
   const candidate = value as Partial<Recipe>
@@ -23,7 +26,8 @@ function isRecipe(value: unknown): value is Recipe {
     ) &&
     Array.isArray(candidate.instructions) &&
     candidate.instructions.every((step) => typeof step === 'string') &&
-    typeof candidate.imageUrl === 'string' &&
+    (candidate.imageUrl === undefined ||
+      typeof candidate.imageUrl === 'string') &&
     Array.isArray(candidate.matchedIngredients) &&
     candidate.matchedIngredients.every(
       (ingredient) => typeof ingredient === 'string',
@@ -65,7 +69,13 @@ export function readFavoriteRecipes(): {
     }
   }
 
-  return { recipes: parsed, error: null }
+  return {
+    recipes: parsed.map((recipe) => ({
+      ...recipe,
+      imageUrl: recipe.imageUrl || generatedRecipeImageUrl,
+    })),
+    error: null,
+  }
 }
 
 export function writeFavoriteRecipes(recipes: Recipe[]): string | null {

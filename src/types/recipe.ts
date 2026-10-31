@@ -2,6 +2,7 @@ export type TimeFilter = 'fast' | 'medium' | 'all'
 
 export interface RecipeIngredient {
   amount: string
+  baseQuantity?: number
   name: string
 }
 
@@ -11,6 +12,7 @@ export interface Recipe {
   description: string
   prepTimeMinutes: number
   servings: number
+  baseServings?: number
   difficulty: 'Easy' | 'Medium'
   ingredients: RecipeIngredient[]
   instructions: string[]

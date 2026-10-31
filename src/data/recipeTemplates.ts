@@ -1,53 +1,19 @@
 import type { Recipe } from '../types/recipe'
+import { withBaseQuantity } from '../utils/ingredientScaling'
 
-const unsplashImagesByKeyword = [
-  { keywords: ['omelette', 'omelet', 'egg'], imageId: 'photo-1525351484163-7529414344d8' },
-  { keywords: ['pasta', 'noodle', 'spaghetti'], imageId: 'photo-1551183053-bf91a1d81141' },
-  { keywords: ['chicken', 'turkey'], imageId: 'photo-1532550907401-a500c9a57435' },
-  { keywords: ['beef', 'steak', 'pork', 'lamb', 'sausage'], imageId: 'photo-1544025162-d76694265947' },
-  { keywords: ['fish', 'salmon', 'shrimp', 'prawn', 'tuna'], imageId: 'photo-1519708227418-c8fd9a32b7a2' },
-  { keywords: ['curry'], imageId: 'photo-1603894584373-5ac82b2ae398' },
-  { keywords: ['soup', 'lentil', 'carrot'], imageId: 'photo-1547592180-85f173990554' },
-  { keywords: ['chickpea', 'salad', 'kale', 'spinach', 'lettuce', 'broccoli', 'cucumber', 'zucchini', 'avocado', 'asparagus', 'corn', 'eggplant', 'aubergine', 'green bean'], imageId: 'photo-1512621776951-a57141f2eefd' },
-  { keywords: ['tomato', 'tomatoes'], imageId: 'photo-1516100882582-96c3a05fe590' },
-  { keywords: ['garlic', 'onion', 'shallot', 'basil', 'parsley', 'herb'], imageId: 'photo-1473093295043-cdd812d0e601' },
-  { keywords: ['bean', 'beans'], imageId: 'photo-1547592180-85f173990554' },
-  { keywords: ['tofu'], imageId: 'photo-1546069901-ba9599a7e63c' },
-  { keywords: ['rice'], imageId: 'photo-1512058564366-18510be2db19' },
-  { keywords: ['mushroom'], imageId: 'photo-1504545102780-26774c1bb073' },
-  { keywords: ['potato'], imageId: 'photo-1518977676601-b53f82aba655' },
-  { keywords: ['bread', 'flour', 'oat', 'oats', 'wheat'], imageId: 'photo-1509440159596-0249088772ff' },
-  { keywords: ['cheese', 'parmesan', 'feta'], imageId: 'photo-1486297678162-eb2a19b0a32d' },
-  { keywords: ['pepper', 'chili', 'chilli', 'bell pepper', 'capsicum'], imageId: 'photo-1518977676601-b53f82aba655' },
-  { keywords: ['apple', 'pear', 'peach', 'berry', 'berries', 'fruit', 'dragonfruit'], imageId: 'photo-1568702846914-96b305d2aaeb' },
-]
+const unsplashImage = (photoId: string) =>
+  `https://images.unsplash.com/${photoId}?auto=format&fit=crop&w=1100&q=85`
 
-export function getRecipeImageUrl(
-  title: string,
-  ingredients: string[] = [],
-): string {
-  const searchTerms = [...ingredients, title].map((value) =>
-    value.toLowerCase().trim(),
-  )
-  const image = searchTerms
-    .map((term) =>
-      unsplashImagesByKeyword.find(({ keywords }) =>
-        keywords.some((keyword) =>
-        new RegExp(`(^|[^a-z])${keyword}([^a-z]|$)`).test(term),
-        ),
-      ),
-    )
-    .find(Boolean)
-  const imageId = image?.imageId ?? 'photo-1551183053-bf91a1d81141'
+export const generatedRecipeImageUrl = unsplashImage(
+  'photo-1556911220-bff31c812dba',
+)
 
-  return `https://images.unsplash.com/${imageId}?auto=format&fit=crop&w=1100&q=85`
-}
-
-const recipeDefinitions: Omit<Recipe, 'imageUrl'>[] = [
+const recipeDefinitions: Recipe[] = [
   {
     id: 'tomato-garlic-pasta',
     title: 'Jammy Tomato & Garlic Pasta',
     description: 'Sweet, slow-softened tomatoes and golden garlic meet a little pasta water for a silky weeknight sauce.',
+    imageUrl: unsplashImage('photo-1551183053-bf91a1d81141'),
     prepTimeMinutes: 12,
     servings: 2,
     difficulty: 'Easy',
@@ -71,6 +37,7 @@ const recipeDefinitions: Omit<Recipe, 'imageUrl'>[] = [
     id: 'garlic-chicken-skillet',
     title: 'Golden Garlic Chicken Skillet',
     description: 'A bright, one-pan supper with tender chicken, sweet tomatoes and plenty of garlicky pan juices.',
+    imageUrl: unsplashImage('photo-1532550907401-a500c9a57435'),
     prepTimeMinutes: 24,
     servings: 2,
     difficulty: 'Easy',
@@ -94,6 +61,7 @@ const recipeDefinitions: Omit<Recipe, 'imageUrl'>[] = [
     id: 'crunchy-chickpea-salad',
     title: 'Crunchy Chickpea & Tomato Salad',
     description: 'Crisp cucumber, juicy tomatoes and creamy feta make this lemony chickpea bowl feel like sunshine.',
+    imageUrl: unsplashImage('photo-1512621776951-a57141f2eefd'),
     prepTimeMinutes: 14,
     servings: 2,
     difficulty: 'Easy',
@@ -117,6 +85,7 @@ const recipeDefinitions: Omit<Recipe, 'imageUrl'>[] = [
     id: 'tomato-chickpea-curry',
     title: 'Cozy Tomato & Chickpea Curry',
     description: 'A mellow, gently spiced pantry curry that turns a few tins and aromatics into a comforting bowl.',
+    imageUrl: unsplashImage('photo-1603894584373-5ac82b2ae398'),
     prepTimeMinutes: 28,
     servings: 3,
     difficulty: 'Easy',
@@ -140,6 +109,7 @@ const recipeDefinitions: Omit<Recipe, 'imageUrl'>[] = [
     id: 'garden-omelette',
     title: 'Soft Herb & Garden Omelette',
     description: 'A tender, golden omelette folded around greens and a little cheese—simple, lovely and ready in minutes.',
+    imageUrl: unsplashImage('photo-1525351484163-7529414344d8'),
     prepTimeMinutes: 11,
     servings: 1,
     difficulty: 'Easy',
@@ -163,6 +133,7 @@ const recipeDefinitions: Omit<Recipe, 'imageUrl'>[] = [
     id: 'garlicky-lentil-soup',
     title: 'Garlicky Tomato & Lentil Soup',
     description: 'A hearty, spoonable bowl with soft lentils, sweet carrot and a bright finish of lemon.',
+    imageUrl: unsplashImage('photo-1547592180-85f173990554'),
     prepTimeMinutes: 27,
     servings: 3,
     difficulty: 'Easy',
@@ -186,5 +157,6 @@ const recipeDefinitions: Omit<Recipe, 'imageUrl'>[] = [
 
 export const recipeTemplates: Recipe[] = recipeDefinitions.map((recipe) => ({
   ...recipe,
-  imageUrl: getRecipeImageUrl(recipe.title),
+  baseServings: recipe.servings,
+  ingredients: recipe.ingredients.map(withBaseQuantity),
 }))

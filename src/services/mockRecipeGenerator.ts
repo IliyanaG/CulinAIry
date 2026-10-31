@@ -1,5 +1,9 @@
-import { getRecipeImageUrl, recipeTemplates } from '../data/recipeTemplates'
+import {
+  generatedRecipeImageUrl,
+  recipeTemplates,
+} from '../data/recipeTemplates'
 import type { Recipe, RecipeIngredient, RecipeGenerationResult, TimeFilter } from '../types/recipe'
+import { withBaseQuantity } from '../utils/ingredientScaling'
 
 const generatedEssentials: RecipeIngredient[] = [
   { amount: '1 tbsp', name: 'Olive oil' },
@@ -182,6 +186,23 @@ function getGeneratedRecipeStyle(ingredients: string[]): {
   return availableStyles[index]
 }
 
+function getGeneratedIngredientAmount(name: string): string {
+  const ingredient = normalizeIngredient(name)
+
+  if (/\begg\b/.test(ingredient)) return '1'
+  if (
+    /\b(chicken|turkey|beef|pork|lamb|fish|salmon|shrimp|prawn|tuna|tofu)\b/.test(
+      ingredient,
+    )
+  ) {
+    return '150 g'
+  }
+  if (/\b(pasta|noodle|spaghetti|rice|lentil|chickpea|bean)\b/.test(ingredient)) {
+    return '75 g'
+  }
+  return '1 cup'
+}
+
 function createGeneratedRecipe(
   ingredients: string[],
   timeFilter: TimeFilter,
@@ -193,13 +214,14 @@ function createGeneratedRecipe(
     : titleCase(first)
   const title = `${style.title}: ${ingredientTitle}`
   const normalizedInputs = new Set(ingredients.map(normalizeIngredient))
-  const userIngredients = ingredients.map((name): RecipeIngredient => ({
-    amount: 'As needed',
-    name,
-  }))
+  const userIngredients = ingredients.map(
+    (name): RecipeIngredient =>
+      withBaseQuantity({ amount: getGeneratedIngredientAmount(name), name }),
+  )
   const essentials = generatedEssentials
     .filter((ingredient) => !normalizedInputs.has(normalizeIngredient(ingredient.name)))
     .slice(0, 4)
+    .map(withBaseQuantity)
   const ingredientNames = ingredients.join(', ')
   const prepTimeMinutes =
     timeFilter === 'fast' ? 12 : timeFilter === 'medium' ? 22 : 32
@@ -210,10 +232,11 @@ function createGeneratedRecipe(
     description: `${style.description} Built around ${ingredientNames}, with bright aromatics and a simple finish.`,
     prepTimeMinutes,
     servings: 2,
+    baseServings: 2,
     difficulty: prepTimeMinutes < 15 ? 'Easy' : 'Medium',
     ingredients: [...userIngredients, ...essentials],
     instructions: style.instructions(ingredientNames),
-    imageUrl: getRecipeImageUrl(title, ingredients),
+    imageUrl: generatedRecipeImageUrl,
     matchedIngredients: ingredients,
   }
 }

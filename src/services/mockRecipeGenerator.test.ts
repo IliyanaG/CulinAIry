@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getRecipeImageUrl, recipeTemplates } from '../data/recipeTemplates'
+import {
+  generatedRecipeImageUrl,
+  recipeTemplates,
+} from '../data/recipeTemplates'
 import {
   isWithinTimeFilter,
   normalizeIngredient,
@@ -9,8 +12,32 @@ import {
   readFavoriteRecipes,
   writeFavoriteRecipes,
 } from './favoriteStorage'
+import { scaleIngredientAmount, withBaseQuantity } from '../utils/ingredientScaling'
 
 describe('mock recipe generator', () => {
+  it('uses a stable rustic kitchen image for generated recipes', () => {
+    expect(generatedRecipeImageUrl).toContain(
+      'photo-1556911220-bff31c812dba',
+    )
+    expect(generatedRecipeImageUrl).toMatch(/^https:\/\/images\.unsplash\.com\//)
+  })
+
+  it('uses a matching static image for each predefined recipe', () => {
+    const expectedImages: Record<string, string> = {
+      'tomato-garlic-pasta': 'photo-1551183053-bf91a1d81141',
+      'garlic-chicken-skillet': 'photo-1532550907401-a500c9a57435',
+      'crunchy-chickpea-salad': 'photo-1512621776951-a57141f2eefd',
+      'tomato-chickpea-curry': 'photo-1603894584373-5ac82b2ae398',
+      'garden-omelette': 'photo-1525351484163-7529414344d8',
+      'garlicky-lentil-soup': 'photo-1547592180-85f173990554',
+    }
+
+    for (const recipe of recipeTemplates) {
+      expect(recipe.imageUrl).toContain(expectedImages[recipe.id])
+      expect(recipe.imageUrl).toMatch(/^https:\/\/images\.unsplash\.com\//)
+    }
+  })
+
   it('selects the closest matching recipe', () => {
     const result = selectRecipe(['tomato', 'chicken', 'garlic'], 'all')
 
@@ -43,49 +70,6 @@ describe('mock recipe generator', () => {
     expect(normalizeIngredient('Chicken   Breast')).toBe('chicken')
   })
 
-  it('chooses a matching Unsplash image for recipe title keywords', () => {
-    const omelette = recipeTemplates.find(
-      (recipe) => recipe.id === 'garden-omelette',
-    )
-
-    expect(omelette?.imageUrl).toContain(
-      'images.unsplash.com/photo-1525351484163-7529414344d8',
-    )
-  })
-
-  it('uses the lead ingredient for generated recipe photos', () => {
-    expect(
-      getRecipeImageUrl('Gourmet Dragonfruit & Kale Skillet', [
-        'dragonfruit',
-        'kale',
-      ]),
-    ).toContain('photo-1568702846914-96b305d2aaeb')
-    expect(
-      getRecipeImageUrl('Gourmet Mystery & Salmon Skillet', [
-        'mystery ingredient',
-        'salmon',
-      ]),
-    ).toContain('photo-1519708227418-c8fd9a32b7a2')
-  })
-
-  it('selects a specific image when a single common ingredient is entered', () => {
-    expect(getRecipeImageUrl('Rustic Garlic Medley', ['garlic'])).toContain(
-      'photo-1473093295043-cdd812d0e601',
-    )
-    expect(getRecipeImageUrl('Rustic Bread Medley', ['bread'])).toContain(
-      'photo-1509440159596-0249088772ff',
-    )
-  })
-
-  it('uses a neutral cooked-dish fallback for ingredients without a mapping', () => {
-    const imageUrl = getRecipeImageUrl('Rustic Mystery Ingredient Medley', [
-      'mystery ingredient',
-    ])
-
-    expect(imageUrl).toContain('photo-1551183053-bf91a1d81141')
-    expect(imageUrl).not.toContain('photo-1512621776951-a57141f2eefd')
-  })
-
   it('keeps fast and medium recipes within their strict time limits', () => {
     expect(isWithinTimeFilter(14, 'fast')).toBe(true)
     expect(isWithinTimeFilter(15, 'fast')).toBe(false)
@@ -112,10 +96,18 @@ describe('mock recipe generator', () => {
         'kale',
       ])
       expect(result.recipe.ingredients.length).toBeGreaterThanOrEqual(5)
+      expect(result.recipe.ingredients[0].baseQuantity).toBe(1)
+      expect(
+        scaleIngredientAmount(
+          result.recipe.ingredients[0],
+          4,
+          result.recipe.baseServings,
+        ),
+      ).toBe('2 cups')
       expect(result.recipe.instructions).toHaveLength(4)
       expect(result.recipe.instructions.join(' ')).toContain('dragonfruit')
       expect(result.recipe.instructions.join(' ')).toContain('kale')
-      expect(result.recipe.imageUrl).toContain('images.unsplash.com')
+      expect(result.recipe.imageUrl).toBe(generatedRecipeImageUrl)
     }
   })
 
@@ -163,6 +155,39 @@ describe('mock recipe generator', () => {
       expect(result.recipe.title).not.toContain('Salad')
       expect(result.recipe.instructions.join(' ')).toContain(
         'safely cooked',
+      )
+    }
+  })
+
+  it('scales numeric ingredient quantities from the recipe base servings', () => {
+    const ingredient = withBaseQuantity({ amount: '1½ cups', name: 'tomato' })
+
+    expect(ingredient.baseQuantity).toBe(1.5)
+    expect(scaleIngredientAmount(ingredient, 4, 2)).toBe('3 cups')
+    expect(scaleIngredientAmount({ amount: '¾ cup', name: 'rice' }, 1, 2)).toBe(
+      '⅜ cup',
+    )
+  })
+
+  it('leaves qualitative ingredient amounts unchanged when scaling', () => {
+    expect(
+      scaleIngredientAmount(
+        { amount: 'To taste', name: 'salt' },
+        5,
+        2,
+      ),
+    ).toBe('To taste')
+  })
+
+  it('uses two servings as the base for dynamically generated recipes', () => {
+    const result = selectRecipe(['dragonfruit', 'kale'], 'all')
+
+    expect(result.status).toBe('success')
+    if (result.status === 'success') {
+      expect(result.recipe.servings).toBe(2)
+      expect(result.recipe.baseServings).toBe(2)
+      expect(result.recipe.ingredients.some((item) => item.baseQuantity)).toBe(
+        true,
       )
     }
   })
@@ -220,6 +245,20 @@ describe('favorite storage', () => {
 
     expect(readFavoriteRecipes()).toEqual({
       recipes: [recipeTemplates[0]],
+      error: null,
+    })
+  })
+
+  it('adds the static rustic fallback image to older saved recipes', () => {
+    const { imageUrl: _imageUrl, ...legacyRecipe } = recipeTemplates[0]
+    vi.stubGlobal('window', {
+      localStorage: {
+        getItem: () => JSON.stringify([legacyRecipe]),
+      },
+    })
+
+    expect(readFavoriteRecipes()).toEqual({
+      recipes: [{ ...legacyRecipe, imageUrl: generatedRecipeImageUrl }],
       error: null,
     })
   })

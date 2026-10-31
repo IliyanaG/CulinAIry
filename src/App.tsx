@@ -59,6 +59,7 @@ type GenerationState =
 
 function App() {
   const [ingredients, setIngredients] = useState<string[]>([])
+  const [servings, setServings] = useState(2)
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all')
   const [generation, setGeneration] = useState<GenerationState>({ status: 'idle' })
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null)
@@ -116,6 +117,9 @@ function App() {
     try {
       const generated = await generateRecipe([...ingredients], timeFilter)
       if (requestId === generationRequestId.current) {
+        if (generated.status === 'success') {
+          setServings(generated.recipe.servings)
+        }
         setGeneration({ status: 'result', result: generated })
       }
     } catch (error) {
@@ -363,7 +367,10 @@ function App() {
                   <button
                     aria-label={`View ${recipe.title}`}
                     className="favorite-card-main"
-                    onClick={() => setSelectedRecipe(recipe)}
+                    onClick={() => {
+                      setServings(recipe.servings)
+                      setSelectedRecipe(recipe)
+                    }}
                     type="button"
                   >
                     <img src={recipe.imageUrl} alt="" loading="lazy" />
@@ -411,8 +418,10 @@ function App() {
             (recipe) => recipe.id === selectedRecipe.id,
           )}
           onClose={() => setSelectedRecipe(null)}
+          onServingsChange={setServings}
           onToggleFavorite={() => toggleFavorite(selectedRecipe)}
           recipe={selectedRecipe}
+          servings={servings}
         />
       )}
     </div>

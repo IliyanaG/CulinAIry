@@ -3,7 +3,6 @@ import {
   Check,
   Clock3,
   Heart,
-  UsersRound,
 } from 'lucide-react'
 import type { Recipe } from '../types/recipe'
 
@@ -57,7 +56,6 @@ export function RecipeCard({
 
         <div className="recipe-meta">
           <span><Clock3 size={16} /> {recipe.prepTimeMinutes} min</span>
-          <span><UsersRound size={16} /> Serves {recipe.servings}</span>
           <span className="difficulty-pill">{recipe.difficulty}</span>
         </div>
 
