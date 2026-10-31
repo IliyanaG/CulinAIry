@@ -1,4 +1,5 @@
 import {
+  ArrowRight,
   Check,
   Clock3,
   Heart,
@@ -10,14 +11,15 @@ interface RecipeCardProps {
   recipe: Recipe
   isFavorite: boolean
   onToggleFavorite: () => void
+  onOpenDetails: () => void
 }
 
 export function RecipeCard({
   recipe,
   isFavorite,
   onToggleFavorite,
+  onOpenDetails,
 }: RecipeCardProps) {
-  const matchedIngredients = new Set(recipe.matchedIngredients)
   const isGenerated = recipe.id.startsWith('generated-')
 
   return (
@@ -48,9 +50,7 @@ export function RecipeCard({
           <Check size={13} />
           {isGenerated
             ? 'A NEW RECIPE, MADE FOR YOUR PANTRY'
-            : matchedIngredients.size > 0
-            ? 'MADE FROM YOUR INGREDIENTS'
-            : 'A KITCHEN CLASSIC TO TRY'}
+            : 'A LITTLE KITCHEN INSPIRATION'}
         </div>
         <h2>{recipe.title}</h2>
         <p className="recipe-description">{recipe.description}</p>
@@ -61,46 +61,13 @@ export function RecipeCard({
           <span className="difficulty-pill">{recipe.difficulty}</span>
         </div>
 
-        <div className="recipe-content-divider" />
-
-        <div className="recipe-lists">
-          <section className="recipe-ingredients">
-            <div className="recipe-list-heading">
-              <h3>Gather your ingredients</h3>
-              <span>{recipe.ingredients.length} items</span>
-            </div>
-            <ul>
-              {recipe.ingredients.map((ingredient) => {
-                const isInPantry = matchedIngredients.has(ingredient.name)
-                return (
-                  <li className={isInPantry ? 'is-in-pantry' : ''} key={ingredient.name}>
-                    <span className="ingredient-check">{isInPantry && <Check size={11} />}</span>
-                    <span>{ingredient.name}</span>
-                    <span className="ingredient-amount">{ingredient.amount}</span>
-                  </li>
-                )
-              })}
-            </ul>
-            {matchedIngredients.size > 0 && (
-              <p className="pantry-legend"><span /> Already in your kitchen</p>
-            )}
-          </section>
-
-          <section className="recipe-instructions">
-            <div className="recipe-list-heading">
-              <h3>Let’s get cooking</h3>
-              <span>{recipe.instructions.length} simple steps</span>
-            </div>
-            <ol>
-              {recipe.instructions.map((instruction, index) => (
-                <li key={instruction}>
-                  <span className="step-number">{String(index + 1).padStart(2, '0')}</span>
-                  <p>{instruction}</p>
-                </li>
-              ))}
-            </ol>
-          </section>
-        </div>
+        <button
+          className="recipe-details-button"
+          onClick={onOpenDetails}
+          type="button"
+        >
+          Open recipe details <ArrowRight size={16} />
+        </button>
       </div>
     </article>
   )

@@ -68,6 +68,24 @@ describe('mock recipe generator', () => {
     ).toContain('photo-1519708227418-c8fd9a32b7a2')
   })
 
+  it('selects a specific image when a single common ingredient is entered', () => {
+    expect(getRecipeImageUrl('Rustic Garlic Medley', ['garlic'])).toContain(
+      'photo-1473093295043-cdd812d0e601',
+    )
+    expect(getRecipeImageUrl('Rustic Bread Medley', ['bread'])).toContain(
+      'photo-1509440159596-0249088772ff',
+    )
+  })
+
+  it('uses a neutral cooked-dish fallback for ingredients without a mapping', () => {
+    const imageUrl = getRecipeImageUrl('Rustic Mystery Ingredient Medley', [
+      'mystery ingredient',
+    ])
+
+    expect(imageUrl).toContain('photo-1551183053-bf91a1d81141')
+    expect(imageUrl).not.toContain('photo-1512621776951-a57141f2eefd')
+  })
+
   it('keeps fast and medium recipes within their strict time limits', () => {
     expect(isWithinTimeFilter(14, 'fast')).toBe(true)
     expect(isWithinTimeFilter(15, 'fast')).toBe(false)
@@ -98,6 +116,54 @@ describe('mock recipe generator', () => {
       expect(result.recipe.instructions.join(' ')).toContain('dragonfruit')
       expect(result.recipe.instructions.join(' ')).toContain('kale')
       expect(result.recipe.imageUrl).toContain('images.unsplash.com')
+    }
+  })
+
+  it('chooses a recipe format that fits pantry staples', () => {
+    const pasta = selectRecipe(['pasta', 'mystery greens'], 'all')
+    const rice = selectRecipe(['rice', 'mystery greens'], 'all')
+    const bread = selectRecipe(['bread', 'mystery greens'], 'all')
+
+    expect(pasta.status).toBe('success')
+    expect(rice.status).toBe('success')
+    expect(bread.status).toBe('success')
+    if (
+      pasta.status === 'success' &&
+      rice.status === 'success' &&
+      bread.status === 'success'
+    ) {
+      expect(pasta.recipe.title).toContain('Pasta')
+      expect(rice.recipe.title).toContain('Rice Bowl')
+      expect(bread.recipe.title).toContain('Toast')
+    }
+  })
+
+  it('varies generated formats for ingredients without a matching staple', () => {
+    const combinations = [
+      ['dragonfruit', 'kale'],
+      ['plantain', 'parsnip'],
+      ['okra', 'plum'],
+      ['artichoke', 'turnip'],
+      ['fig', 'celeriac'],
+    ]
+    const titles = combinations.map((items) => {
+      const result = selectRecipe(items, 'all')
+      return result.status === 'success' ? result.recipe.title : ''
+    })
+
+    expect(new Set(titles).size).toBeGreaterThan(1)
+    expect(titles.some((title) => title.includes('Skillet'))).toBe(false)
+  })
+
+  it('does not suggest an uncooked salad for raw animal ingredients', () => {
+    const result = selectRecipe(['chicken', 'dragonfruit'], 'all')
+
+    expect(result.status).toBe('success')
+    if (result.status === 'success') {
+      expect(result.recipe.title).not.toContain('Salad')
+      expect(result.recipe.instructions.join(' ')).toContain(
+        'safely cooked',
+      )
     }
   })
 

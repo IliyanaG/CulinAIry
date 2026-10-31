@@ -4,16 +4,21 @@ const unsplashImagesByKeyword = [
   { keywords: ['omelette', 'omelet', 'egg'], imageId: 'photo-1525351484163-7529414344d8' },
   { keywords: ['pasta', 'noodle', 'spaghetti'], imageId: 'photo-1551183053-bf91a1d81141' },
   { keywords: ['chicken', 'turkey'], imageId: 'photo-1532550907401-a500c9a57435' },
-  { keywords: ['beef', 'steak'], imageId: 'photo-1544025162-d76694265947' },
+  { keywords: ['beef', 'steak', 'pork', 'lamb', 'sausage'], imageId: 'photo-1544025162-d76694265947' },
   { keywords: ['fish', 'salmon', 'shrimp', 'prawn', 'tuna'], imageId: 'photo-1519708227418-c8fd9a32b7a2' },
   { keywords: ['curry'], imageId: 'photo-1603894584373-5ac82b2ae398' },
   { keywords: ['soup', 'lentil', 'carrot'], imageId: 'photo-1547592180-85f173990554' },
-  { keywords: ['chickpea', 'salad', 'kale', 'spinach', 'lettuce', 'broccoli', 'cucumber', 'zucchini', 'avocado'], imageId: 'photo-1512621776951-a57141f2eefd' },
-  { keywords: ['tomato'], imageId: 'photo-1551183053-bf91a1d81141' },
+  { keywords: ['chickpea', 'salad', 'kale', 'spinach', 'lettuce', 'broccoli', 'cucumber', 'zucchini', 'avocado', 'asparagus', 'corn', 'eggplant', 'aubergine', 'green bean'], imageId: 'photo-1512621776951-a57141f2eefd' },
+  { keywords: ['tomato', 'tomatoes'], imageId: 'photo-1516100882582-96c3a05fe590' },
+  { keywords: ['garlic', 'onion', 'shallot', 'basil', 'parsley', 'herb'], imageId: 'photo-1473093295043-cdd812d0e601' },
+  { keywords: ['bean', 'beans'], imageId: 'photo-1547592180-85f173990554' },
   { keywords: ['tofu'], imageId: 'photo-1546069901-ba9599a7e63c' },
   { keywords: ['rice'], imageId: 'photo-1512058564366-18510be2db19' },
   { keywords: ['mushroom'], imageId: 'photo-1504545102780-26774c1bb073' },
   { keywords: ['potato'], imageId: 'photo-1518977676601-b53f82aba655' },
+  { keywords: ['bread', 'flour', 'oat', 'oats', 'wheat'], imageId: 'photo-1509440159596-0249088772ff' },
+  { keywords: ['cheese', 'parmesan', 'feta'], imageId: 'photo-1486297678162-eb2a19b0a32d' },
+  { keywords: ['pepper', 'chili', 'chilli', 'bell pepper', 'capsicum'], imageId: 'photo-1518977676601-b53f82aba655' },
   { keywords: ['apple', 'pear', 'peach', 'berry', 'berries', 'fruit', 'dragonfruit'], imageId: 'photo-1568702846914-96b305d2aaeb' },
 ]
 
@@ -33,7 +38,7 @@ export function getRecipeImageUrl(
       ),
     )
     .find(Boolean)
-  const imageId = image?.imageId ?? 'photo-1512621776951-a57141f2eefd'
+  const imageId = image?.imageId ?? 'photo-1551183053-bf91a1d81141'
 
   return `https://images.unsplash.com/${imageId}?auto=format&fit=crop&w=1100&q=85`
 }

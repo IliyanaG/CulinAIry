@@ -6,6 +6,7 @@ import {
   ChefHat,
   Clock3,
   CookingPot,
+  Flame,
   Heart,
   LoaderCircle,
   Sparkles,
@@ -13,6 +14,7 @@ import {
 } from 'lucide-react'
 import { IngredientInput } from './components/IngredientInput'
 import { RecipeCard } from './components/RecipeCard'
+import { RecipeDetailsDialog } from './components/RecipeDetailsDialog'
 import { useFavorites } from './hooks/useFavorites'
 import {
   generateRecipe,
@@ -20,7 +22,28 @@ import {
 } from './services/mockRecipeGenerator'
 import type { Recipe, RecipeGenerationResult, TimeFilter } from './types/recipe'
 
-const ingredientSuggestions = ['tomato', 'chicken', 'garlic', 'pasta', 'chickpea']
+const ingredientSuggestions = [
+  'tomato',
+  'chicken',
+  'garlic',
+  'pasta',
+  'chickpea',
+  'spinach',
+  'egg',
+  'rice',
+  'mushroom',
+  'bell pepper',
+  'onion',
+  'potato',
+  'cucumber',
+  'avocado',
+  'salmon',
+  'tofu',
+  'lentils',
+  'zucchini',
+  'feta',
+  'broccoli',
+]
 
 const timeFilters: { id: TimeFilter; label: string; detail: string }[] = [
   { id: 'fast', label: 'Fast', detail: 'Under 15 min' },
@@ -38,6 +61,7 @@ function App() {
   const [ingredients, setIngredients] = useState<string[]>([])
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all')
   const [generation, setGeneration] = useState<GenerationState>({ status: 'idle' })
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null)
   const generationRequestId = useRef(0)
   const { favorites, storageMessage, toggleFavorite, removeFavorite } =
     useFavorites()
@@ -107,18 +131,6 @@ function App() {
     }
   }
 
-  const showFavorite = (recipe: Recipe) => {
-    invalidateGeneration()
-    setGeneration({
-      status: 'result',
-      result: { status: 'success', recipe },
-    })
-    document.getElementById('recipe-result')?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start',
-    })
-  }
-
   return (
     <div className="app-shell min-h-screen bg-cream text-ink">
       <header className="site-header">
@@ -155,7 +167,10 @@ function App() {
               Tell us what you have and we’ll find the delicious in it.
             </p>
             <a className="hero-scroll-link" href="#create">
-              Let’s make something <ArrowDown size={15} />
+              <span>Let’s make something</span>
+              <span className="hero-scroll-icon">
+                <ArrowDown aria-hidden="true" size={20} strokeWidth={2.2} />
+              </span>
             </a>
           </div>
           <div className="hero-visual">
@@ -169,7 +184,6 @@ function App() {
               <span className="caption-kicker">A little inspiration</span>
               <span className="caption-title">Made for real life.</span>
             </div>
-            <span className="hero-image-index">01 <span>/</span> 03</span>
           </div>
         </section>
 
@@ -185,7 +199,7 @@ function App() {
           <div className="generator-panel">
             <div className="ingredient-field">
               <label className="field-label" htmlFor="ingredient-entry">
-                Your ingredients <span>· add a few or use what’s left</span>
+                Your ingredients
               </label>
               <IngredientInput
                 ingredients={ingredients}
@@ -198,8 +212,17 @@ function App() {
                 }}
               />
               <div className="suggestion-row">
-                <span>Try</span>
-                {ingredientSuggestions.map((ingredient) => (
+                <span>Popular</span>
+                {ingredientSuggestions
+                  .filter(
+                    (ingredient) =>
+                      !ingredients.some(
+                        (selected) =>
+                          normalizeIngredient(selected) ===
+                          normalizeIngredient(ingredient),
+                      ),
+                  )
+                  .map((ingredient) => (
                   <button
                     className="suggestion-chip transition-colors duration-200"
                     key={ingredient}
@@ -208,10 +231,29 @@ function App() {
                   >
                     + {ingredient}
                   </button>
-                ))}
+                  ))}
               </div>
             </div>
 
+            <button
+              className="generate-button transition-all duration-200"
+              disabled={generation.status === 'loading'}
+              onClick={handleGenerate}
+              type="button"
+            >
+              {generation.status === 'loading' ? (
+                <>
+                  <LoaderCircle className="spin" size={18} />
+                  Finding your recipe
+                </>
+              ) : (
+                <>
+                  <Sparkles size={17} />
+                  Generate recipe
+                  <ArrowRight className="generate-arrow" size={16} />
+                </>
+              )}
+            </button>
             <div className="generator-controls">
               <div className="time-filter">
                 <span className="field-label">How much time do you have?</span>
@@ -227,31 +269,21 @@ function App() {
                       }}
                       type="button"
                     >
-                      <span>{filter.label}</span>
-                      <small>{filter.detail}</small>
+                      {filter.id === 'fast' ? (
+                        <Flame className="filter-option-icon" size={20} />
+                      ) : filter.id === 'medium' ? (
+                        <Clock3 className="filter-option-icon" size={20} />
+                      ) : (
+                        <Sparkles className="filter-option-icon" size={20} />
+                      )}
+                      <span className="filter-option-copy">
+                        <span>{filter.label}</span>
+                        <small>{filter.detail}</small>
+                      </span>
                     </button>
                   ))}
                 </div>
               </div>
-              <button
-                className="generate-button transition-all duration-200"
-                disabled={generation.status === 'loading'}
-                onClick={handleGenerate}
-                type="button"
-              >
-                {generation.status === 'loading' ? (
-                  <>
-                    <LoaderCircle className="spin" size={18} />
-                    Finding your recipe
-                  </>
-                ) : (
-                  <>
-                    <Sparkles size={17} />
-                    Generate recipe
-                    <ArrowRight className="generate-arrow" size={16} />
-                  </>
-                )}
-              </button>
             </div>
           </div>
         </section>
@@ -276,6 +308,7 @@ function App() {
                 (recipe) => recipe.id === generatedRecipe.id,
               )}
               onToggleFavorite={() => toggleFavorite(generatedRecipe)}
+              onOpenDetails={() => setSelectedRecipe(generatedRecipe)}
               recipe={generatedRecipe}
             />
           ) : generation.status === 'result' &&
@@ -330,7 +363,7 @@ function App() {
                   <button
                     aria-label={`View ${recipe.title}`}
                     className="favorite-card-main"
-                    onClick={() => showFavorite(recipe)}
+                    onClick={() => setSelectedRecipe(recipe)}
                     type="button"
                   >
                     <img src={recipe.imageUrl} alt="" loading="lazy" />
@@ -372,6 +405,16 @@ function App() {
         <span>Cook a little more creatively.</span>
         <a href="#create">Back to the kitchen <ArrowRight size={14} /></a>
       </footer>
+      {selectedRecipe && (
+        <RecipeDetailsDialog
+          isFavorite={favorites.some(
+            (recipe) => recipe.id === selectedRecipe.id,
+          )}
+          onClose={() => setSelectedRecipe(null)}
+          onToggleFavorite={() => toggleFavorite(selectedRecipe)}
+          recipe={selectedRecipe}
+        />
+      )}
     </div>
   )
 }
