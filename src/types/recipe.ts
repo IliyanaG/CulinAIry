@@ -21,4 +21,3 @@ export interface Recipe {
 export type RecipeGenerationResult =
   | { status: 'success'; recipe: Recipe }
   | { status: 'empty'; message: string }
-  | { status: 'no-match'; message: string }

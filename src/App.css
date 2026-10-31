@@ -6,6 +6,8 @@
   --green-dark: #40583b;
   --cream: #fbf8f2;
   --terracotta: #c76f4e;
+  --terracotta-dark: #914832;
+  --terracotta-soft: #f5e8df;
   min-height: 100vh;
   overflow: hidden;
   color: var(--ink);
@@ -464,7 +466,12 @@
   border: 1px solid #eae7df;
   border-radius: 2px;
   cursor: pointer;
-  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
 }
 
 .filter-option > span {
@@ -480,16 +487,27 @@
 
 .filter-option:hover {
   border-color: #b7c1af;
+  transform: translateY(-1px);
 }
 
 .filter-option.is-selected {
-  color: #41543b;
-  background: #edf1e9;
-  border-color: #9bad91;
+  color: #fffaf5;
+  background: var(--terracotta-dark);
+  border-color: var(--terracotta-dark);
+  box-shadow: 0 5px 13px rgba(145, 72, 50, 0.19);
 }
 
 .filter-option.is-selected small {
-  color: #697961;
+  color: rgba(255, 250, 245, 0.78);
+}
+
+.filter-option.is-selected:hover {
+  background: #7f3e2b;
+  border-color: #7f3e2b;
+}
+
+.filter-option:active {
+  transform: translateY(0);
 }
 
 .generate-button {
@@ -860,10 +878,12 @@
 }
 
 .recipe-instructions p {
+  max-width: 68ch;
   margin: 0;
   color: #6e7068;
-  font-size: 9px;
-  line-height: 1.65;
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
 }
 
 .favorites-section {
@@ -1401,7 +1421,7 @@
   }
 
   .recipe-instructions p {
-    font-size: 10px;
+    font-size: 13px;
   }
 
   .recipe-ingredients li {

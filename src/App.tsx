@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   ArrowDown,
   ArrowRight,
@@ -29,15 +29,40 @@ const timeFilters: { id: TimeFilter; label: string; detail: string }[] = [
   { id: 'all', label: 'Any time', detail: 'No limit' },
 ]
 
+type GenerationState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'result'; result: RecipeGenerationResult }
+  | { status: 'error'; message: string }
+
 function App() {
   const [ingredients, setIngredients] = useState<string[]>([])
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all')
-  const [result, setResult] = useState<RecipeGenerationResult | null>(null)
-  const [isGenerating, setIsGenerating] = useState(false)
+  const [generation, setGeneration] = useState<GenerationState>({ status: 'idle' })
+  const generationRequestId = useRef(0)
   const { favorites, storageMessage, toggleFavorite, removeFavorite } =
     useFavorites()
+  const generatedRecipe =
+    generation.status === 'result' && generation.result.status === 'success'
+      ? generation.result.recipe
+      : null
+
+  useEffect(
+    () => () => {
+      generationRequestId.current += 1
+    },
+    [],
+  )
+
+  const invalidateGeneration = () => {
+    generationRequestId.current += 1
+    setGeneration((current) =>
+      current.status === 'loading' ? { status: 'idle' } : current,
+    )
+  }
 
   const addIngredients = (newIngredients: string[]) => {
+    invalidateGeneration()
     setIngredients((current) => {
       const currentNames = new Set(current.map(normalizeIngredient))
       const uniqueAdditions = newIngredients.filter((item) => {
@@ -52,25 +77,43 @@ function App() {
 
   const handleGenerate = async () => {
     if (ingredients.length === 0) {
-      setResult({
-        status: 'empty',
-        message: 'Add at least one ingredient to get your recipe started.',
+      generationRequestId.current += 1
+      setGeneration({
+        status: 'result',
+        result: {
+          status: 'empty',
+          message: 'Add at least one ingredient to get your recipe started.',
+        },
       })
       return
     }
 
-    setIsGenerating(true)
-    setResult(null)
+    const requestId = ++generationRequestId.current
+    setGeneration({ status: 'loading' })
     try {
-      const generated = await generateRecipe(ingredients, timeFilter)
-      setResult(generated)
-    } finally {
-      setIsGenerating(false)
+      const generated = await generateRecipe([...ingredients], timeFilter)
+      if (requestId === generationRequestId.current) {
+        setGeneration({ status: 'result', result: generated })
+      }
+    } catch (error) {
+      if (requestId === generationRequestId.current) {
+        setGeneration({
+          status: 'error',
+          message:
+            error instanceof Error
+              ? `We couldn't create that recipe. ${error.message}`
+              : "We couldn't create that recipe. Please try again.",
+        })
+      }
     }
   }
 
   const showFavorite = (recipe: Recipe) => {
-    setResult({ status: 'success', recipe })
+    invalidateGeneration()
+    setGeneration({
+      status: 'result',
+      result: { status: 'success', recipe },
+    })
     document.getElementById('recipe-result')?.scrollIntoView({
       behavior: 'smooth',
       block: 'start',
@@ -152,11 +195,12 @@ function App() {
               <IngredientInput
                 ingredients={ingredients}
                 onAddIngredients={addIngredients}
-                onRemoveIngredient={(ingredient) =>
+                onRemoveIngredient={(ingredient) => {
+                  invalidateGeneration()
                   setIngredients((current) =>
                     current.filter((item) => item !== ingredient),
                   )
-                }
+                }}
               />
               <div className="suggestion-row">
                 <span>Try</span>
@@ -182,7 +226,10 @@ function App() {
                       aria-pressed={timeFilter === filter.id}
                       className={`filter-option${timeFilter === filter.id ? ' is-selected' : ''}`}
                       key={filter.id}
-                      onClick={() => setTimeFilter(filter.id)}
+                      onClick={() => {
+                        invalidateGeneration()
+                        setTimeFilter(filter.id)
+                      }}
                       type="button"
                     >
                       <span>{filter.label}</span>
@@ -193,11 +240,11 @@ function App() {
               </div>
               <button
                 className="generate-button transition-all duration-200"
-                disabled={isGenerating}
+                disabled={generation.status === 'loading'}
                 onClick={handleGenerate}
                 type="button"
               >
-                {isGenerating ? (
+                {generation.status === 'loading' ? (
                   <>
                     <LoaderCircle className="spin" size={18} />
                     Finding your recipe
@@ -214,8 +261,13 @@ function App() {
           </div>
         </section>
 
-        <section aria-live="polite" className="result-section page-width" id="recipe-result">
-          {isGenerating ? (
+        <section
+          aria-busy={generation.status === 'loading'}
+          aria-live="polite"
+          className="result-section page-width"
+          id="recipe-result"
+        >
+          {generation.status === 'loading' ? (
             <div className="result-placeholder loading-state">
               <span className="loading-icon"><LoaderCircle className="spin" size={23} /></span>
               <div>
@@ -223,21 +275,32 @@ function App() {
                 <p>Give us a moment to put something lovely together.</p>
               </div>
             </div>
-          ) : result?.status === 'success' ? (
+          ) : generatedRecipe ? (
             <RecipeCard
-              isFavorite={favorites.some((recipe) => recipe.id === result.recipe.id)}
-              onToggleFavorite={() => toggleFavorite(result.recipe)}
-              recipe={result.recipe}
+              isFavorite={favorites.some(
+                (recipe) => recipe.id === generatedRecipe.id,
+              )}
+              onToggleFavorite={() => toggleFavorite(generatedRecipe)}
+              recipe={generatedRecipe}
             />
-          ) : result ? (
+          ) : generation.status === 'result' &&
+            generation.result.status === 'empty' ? (
             <div className="result-placeholder message-state">
               <span className="placeholder-icon"><ChefHat size={23} /></span>
               <div>
-                <h3>{result.status === 'empty' ? 'Let’s start with an ingredient.' : 'No recipe found just yet.'}</h3>
-                <p>{result.message}</p>
+                <h3>Let’s start with an ingredient.</h3>
+                <p>{generation.result.message}</p>
               </div>
             </div>
-          ) : (
+          ) : generation.status === 'error' ? (
+            <div className="result-placeholder message-state">
+              <span className="placeholder-icon"><ChefHat size={23} /></span>
+              <div>
+                <h3>We hit a snag in the kitchen.</h3>
+                <p>{generation.message}</p>
+              </div>
+            </div>
+          ) : generation.status === 'idle' ? (
             <div className="result-placeholder idle-state">
               <span className="placeholder-icon"><CookingPot size={23} /></span>
               <div>
@@ -249,7 +312,7 @@ function App() {
                 <span><UsersRound size={14} /> Your pantry</span>
               </div>
             </div>
-          )}
+          ) : null}
         </section>
 
         <section className="favorites-section page-width" id="favorites">

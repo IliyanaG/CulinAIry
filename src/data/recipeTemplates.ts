@@ -1,6 +1,34 @@
 import type { Recipe } from '../types/recipe'
 
-export const recipeTemplates: Recipe[] = [
+const unsplashImagesByKeyword = [
+  { keywords: ['omelette', 'omelet', 'egg'], imageId: 'photo-1525351484163-7529414344d8' },
+  { keywords: ['pasta'], imageId: 'photo-1551183053-bf91a1d81141' },
+  { keywords: ['chicken'], imageId: 'photo-1532550907401-a500c9a57435' },
+  { keywords: ['salad'], imageId: 'photo-1512621776951-a57141f2eefd' },
+  { keywords: ['curry'], imageId: 'photo-1603894584373-5ac82b2ae398' },
+  { keywords: ['soup', 'lentil'], imageId: 'photo-1547592180-85f173990554' },
+  { keywords: ['chickpea'], imageId: 'photo-1512621776951-a57141f2eefd' },
+  { keywords: ['tomato'], imageId: 'photo-1547592180-85f173990554' },
+  { keywords: ['beef', 'steak'], imageId: 'photo-1544025162-d76694265947' },
+  { keywords: ['fish', 'salmon', 'shrimp', 'prawn'], imageId: 'photo-1519708227418-c8fd9a32b7a2' },
+  { keywords: ['tofu'], imageId: 'photo-1546069901-ba9599a7e63c' },
+  { keywords: ['rice'], imageId: 'photo-1512058564366-18510be2db19' },
+  { keywords: ['mushroom'], imageId: 'photo-1504545102780-26774c1bb073' },
+  { keywords: ['potato'], imageId: 'photo-1518977676601-b53f82aba655' },
+  { keywords: ['apple'], imageId: 'photo-1568702846914-96b305d2aaeb' },
+]
+
+export function getRecipeImageUrl(title: string): string {
+  const normalizedTitle = title.toLowerCase()
+  const image = unsplashImagesByKeyword.find(({ keywords }) =>
+    keywords.some((keyword) => normalizedTitle.includes(keyword)),
+  )
+  const imageId = image?.imageId ?? 'photo-1512621776951-a57141f2eefd'
+
+  return `https://images.unsplash.com/${imageId}?auto=format&fit=crop&w=1100&q=85`
+}
+
+const recipeDefinitions: Omit<Recipe, 'imageUrl'>[] = [
   {
     id: 'tomato-garlic-pasta',
     title: 'Jammy Tomato & Garlic Pasta',
@@ -22,7 +50,6 @@ export const recipeTemplates: Recipe[] = [
       'Let the tomatoes soften and turn jammy, about 5 minutes. Add the pasta and a splash of pasta water, tossing until glossy.',
       'Finish with parmesan and torn basil. Taste, season, and bring the pan straight to the table.',
     ],
-    imageUrl: 'https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=1100&q=85',
     matchedIngredients: [],
   },
   {
@@ -46,7 +73,6 @@ export const recipeTemplates: Recipe[] = [
       'Add the sliced onion to the same pan. Once softened, stir in the garlic and tomatoes and cook until the tomatoes begin to burst.',
       'Return the chicken and any resting juices to the pan. Spoon the glossy sauce over the top and finish with parsley.',
     ],
-    imageUrl: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=1100&q=85',
     matchedIngredients: [],
   },
   {
@@ -70,7 +96,6 @@ export const recipeTemplates: Recipe[] = [
       'Squeeze over the lemon, drizzle with olive oil, and season with salt and black pepper. Toss gently.',
       'Crumble over the feta and finish with parsley. Let it sit for a few minutes so all the bright flavors mingle.',
     ],
-    imageUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1100&q=85',
     matchedIngredients: [],
   },
   {
@@ -94,7 +119,6 @@ export const recipeTemplates: Recipe[] = [
       'Tip in the chickpeas and coconut milk. Simmer gently until thick and fragrant, about 15 minutes.',
       'Taste and adjust the seasoning. Spoon into bowls with rice or warm flatbread if you have some.',
     ],
-    imageUrl: 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=1100&q=85',
     matchedIngredients: [],
   },
   {
@@ -118,7 +142,6 @@ export const recipeTemplates: Recipe[] = [
       'Pour in the eggs and gently draw the edges toward the center as they set. Scatter over the feta and herbs.',
       'Fold the omelette in half while still a little soft in the middle. Slide onto a warm plate and enjoy right away.',
     ],
-    imageUrl: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=1100&q=85',
     matchedIngredients: [],
   },
   {
@@ -142,7 +165,11 @@ export const recipeTemplates: Recipe[] = [
       'Add the lentils and 3 cups of water or stock. Bring to a boil, then lower the heat and simmer until the lentils are tender.',
       'Season to taste and finish with a squeeze of lemon. Add a little water if you prefer a looser soup.',
     ],
-    imageUrl: 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=1100&q=85',
     matchedIngredients: [],
   },
 ]
+
+export const recipeTemplates: Recipe[] = recipeDefinitions.map((recipe) => ({
+  ...recipe,
+  imageUrl: getRecipeImageUrl(recipe.title),
+}))

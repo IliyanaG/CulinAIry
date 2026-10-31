@@ -18,12 +18,19 @@ export function RecipeCard({
   onToggleFavorite,
 }: RecipeCardProps) {
   const matchedIngredients = new Set(recipe.matchedIngredients)
+  const isGenerated = recipe.id.startsWith('generated-')
 
   return (
     <article className="recipe-card">
       <div className="recipe-photo">
-        <img src={recipe.imageUrl} alt={`Prepared ${recipe.title}`} />
-        <span className="photo-label"><span /> YOUR PANTRY, REIMAGINED</span>
+        <img
+          src={recipe.imageUrl}
+          alt={`Prepared ${recipe.title}`}
+          decoding="async"
+        />
+        <span className="photo-label">
+          <span /> {isGenerated ? 'A FRESH RECIPE, JUST FOR YOU' : 'YOUR PANTRY, REIMAGINED'}
+        </span>
         <button
           aria-label={isFavorite ? 'Remove recipe from favorites' : 'Save recipe to favorites'}
           aria-pressed={isFavorite}
@@ -37,7 +44,14 @@ export function RecipeCard({
       </div>
 
       <div className="recipe-content">
-        <div className="recipe-eyebrow"><Check size={13} /> MADE FROM YOUR INGREDIENTS</div>
+        <div className="recipe-eyebrow">
+          <Check size={13} />
+          {isGenerated
+            ? 'A NEW RECIPE, MADE FOR YOUR PANTRY'
+            : matchedIngredients.size > 0
+            ? 'MADE FROM YOUR INGREDIENTS'
+            : 'A KITCHEN CLASSIC TO TRY'}
+        </div>
         <h2>{recipe.title}</h2>
         <p className="recipe-description">{recipe.description}</p>
 
@@ -67,7 +81,9 @@ export function RecipeCard({
                 )
               })}
             </ul>
-            <p className="pantry-legend"><span /> Already in your kitchen</p>
+            {matchedIngredients.size > 0 && (
+              <p className="pantry-legend"><span /> Already in your kitchen</p>
+            )}
           </section>
 
           <section className="recipe-instructions">

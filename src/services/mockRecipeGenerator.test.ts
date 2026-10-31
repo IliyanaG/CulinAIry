@@ -25,9 +25,32 @@ describe('mock recipe generator', () => {
     }
   })
 
+  it('ranks the recipe with the most matching ingredients first', () => {
+    const result = selectRecipe(
+      ['chickpeas', 'tomatoes', 'lemon', 'feta', 'parsley'],
+      'all',
+    )
+
+    expect(result.status).toBe('success')
+    if (result.status === 'success') {
+      expect(result.recipe.id).toBe('crunchy-chickpea-salad')
+      expect(result.recipe.matchedIngredients).toHaveLength(5)
+    }
+  })
+
   it('normalizes common plurals and whitespace', () => {
     expect(normalizeIngredient('  Chickpeas  ')).toBe('chickpea')
     expect(normalizeIngredient('Chicken   Breast')).toBe('chicken')
+  })
+
+  it('chooses a matching Unsplash image for recipe title keywords', () => {
+    const omelette = recipeTemplates.find(
+      (recipe) => recipe.id === 'garden-omelette',
+    )
+
+    expect(omelette?.imageUrl).toContain(
+      'images.unsplash.com/photo-1525351484163-7529414344d8',
+    )
   })
 
   it('keeps fast and medium recipes within their strict time limits', () => {
@@ -38,9 +61,58 @@ describe('mock recipe generator', () => {
     expect(isWithinTimeFilter(30, 'all')).toBe(true)
   })
 
-  it('returns a friendly result for empty or unmatched ingredients', () => {
+  it('returns an empty result when no ingredients are provided', () => {
     expect(selectRecipe([], 'all').status).toBe('empty')
-    expect(selectRecipe(['dragonfruit'], 'all').status).toBe('no-match')
+  })
+
+  it('builds a complete recipe from ingredients outside the mock collection', () => {
+    const result = selectRecipe(['dragonfruit', 'kale'], 'all')
+
+    expect(result).toMatchObject({
+      status: 'success',
+    })
+    if (result.status === 'success') {
+      expect(result.recipe.id).toMatch(/^generated-/)
+      expect(result.recipe.title).toContain('Dragonfruit')
+      expect(result.recipe.ingredients.slice(0, 2).map(({ name }) => name)).toEqual([
+        'dragonfruit',
+        'kale',
+      ])
+      expect(result.recipe.ingredients.length).toBeGreaterThanOrEqual(5)
+      expect(result.recipe.instructions).toHaveLength(4)
+      expect(result.recipe.instructions.join(' ')).toContain('dragonfruit')
+      expect(result.recipe.instructions.join(' ')).toContain('kale')
+      expect(result.recipe.imageUrl).toContain('images.unsplash.com')
+    }
+  })
+
+  it('keeps every entered ingredient when a known and unknown item are mixed', () => {
+    const result = selectRecipe(['tomato', 'dragonfruit'], 'all')
+
+    expect(result.status).toBe('success')
+    if (result.status === 'success') {
+      expect(result.recipe.id).toMatch(/^generated-/)
+      expect(result.recipe.ingredients.map(({ name }) => name)).toContain(
+        'dragonfruit',
+      )
+      expect(result.recipe.ingredients.map(({ name }) => name)).toContain(
+        'tomato',
+      )
+    }
+  })
+
+  it('respects time filters when composing a dynamic recipe', () => {
+    const fast = selectRecipe(['dragonfruit'], 'fast')
+    const medium = selectRecipe(['dragonfruit'], 'medium')
+
+    expect(fast.status).toBe('success')
+    expect(medium.status).toBe('success')
+    if (fast.status === 'success') {
+      expect(fast.recipe.prepTimeMinutes).toBeLessThan(15)
+    }
+    if (medium.status === 'success') {
+      expect(medium.recipe.prepTimeMinutes).toBeLessThan(30)
+    }
   })
 
   it('never returns a recipe above the selected time limit', () => {
