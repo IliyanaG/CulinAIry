@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { recipeTemplates } from '../data/recipeTemplates'
+import { getRecipeImageUrl, recipeTemplates } from '../data/recipeTemplates'
 import {
   isWithinTimeFilter,
   normalizeIngredient,
@@ -51,6 +51,21 @@ describe('mock recipe generator', () => {
     expect(omelette?.imageUrl).toContain(
       'images.unsplash.com/photo-1525351484163-7529414344d8',
     )
+  })
+
+  it('uses the lead ingredient for generated recipe photos', () => {
+    expect(
+      getRecipeImageUrl('Gourmet Dragonfruit & Kale Skillet', [
+        'dragonfruit',
+        'kale',
+      ]),
+    ).toContain('photo-1568702846914-96b305d2aaeb')
+    expect(
+      getRecipeImageUrl('Gourmet Mystery & Salmon Skillet', [
+        'mystery ingredient',
+        'salmon',
+      ]),
+    ).toContain('photo-1519708227418-c8fd9a32b7a2')
   })
 
   it('keeps fast and medium recipes within their strict time limits', () => {

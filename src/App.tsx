@@ -7,7 +7,6 @@ import {
   Clock3,
   CookingPot,
   Heart,
-  Leaf,
   LoaderCircle,
   Sparkles,
   UsersRound,
@@ -169,10 +168,6 @@ function App() {
             <div className="hero-image-caption">
               <span className="caption-kicker">A little inspiration</span>
               <span className="caption-title">Made for real life.</span>
-            </div>
-            <div className="hero-note">
-              <span className="hero-note-icon"><Leaf size={17} /></span>
-              <span><strong>Good things,</strong><br />already in your kitchen</span>
             </div>
             <span className="hero-image-index">01 <span>/</span> 03</span>
           </div>

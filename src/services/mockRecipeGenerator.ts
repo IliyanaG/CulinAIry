@@ -93,7 +93,7 @@ function createGeneratedRecipe(
       `Add ${ingredientNames} and cook, stirring, until tender and safely cooked.`,
       'Season with salt & pepper, finish with lemon, and serve warm.',
     ],
-    imageUrl: getRecipeImageUrl(title),
+    imageUrl: getRecipeImageUrl(title, ingredients),
     matchedIngredients: ingredients,
   }
 }
