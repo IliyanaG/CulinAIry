@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  ArrowDown,
   ArrowRight,
   Check,
   ChefHat,
@@ -10,7 +9,7 @@ import {
   Heart,
   LoaderCircle,
   Sparkles,
-  UsersRound,
+  TriangleAlert,
 } from 'lucide-react'
 import { IngredientInput } from './components/IngredientInput'
 import { RecipeCard } from './components/RecipeCard'
@@ -19,8 +18,9 @@ import { useFavorites } from './hooks/useFavorites'
 import {
   generateRecipe,
   normalizeIngredient,
-} from './services/mockRecipeGenerator'
+} from './services/recipeGenerator'
 import type { Recipe, RecipeGenerationResult, TimeFilter } from './types/recipe'
+import { cleanIngredientInput } from './utils/ingredientInput'
 
 const ingredientSuggestionGroups = [
   {
@@ -59,7 +59,6 @@ const timeFilters: { id: TimeFilter; label: string; detail: string }[] = [
 
 type GenerationState =
   | { status: 'idle' }
-  | { status: 'loading' }
   | { status: 'result'; result: RecipeGenerationResult }
   | { status: 'error'; message: string }
 
@@ -67,10 +66,12 @@ function App() {
   const [ingredients, setIngredients] = useState<string[]>([])
   const [showIngredientSuggestions, setShowIngredientSuggestions] =
     useState(false)
-  const ingredientFieldRef = useRef<HTMLDivElement>(null)
+  const ingredientActionAreaRef = useRef<HTMLDivElement>(null)
   const [servings, setServings] = useState(2)
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all')
   const [generation, setGeneration] = useState<GenerationState>({ status: 'idle' })
+  const [isLoading, setIsLoading] = useState<boolean>(false)
+  const [error, setError] = useState<string | null>(null)
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null)
   const generationRequestId = useRef(0)
   const { favorites, storageMessage, toggleFavorite, removeFavorite } =
@@ -91,8 +92,12 @@ function App() {
     if (!showIngredientSuggestions) return
 
     const handleOutsidePointerDown = (event: PointerEvent) => {
-      const field = ingredientFieldRef.current
-      if (field && event.target instanceof Node && !field.contains(event.target)) {
+      const actionArea = ingredientActionAreaRef.current
+      if (
+        actionArea &&
+        event.target instanceof Node &&
+        !actionArea.contains(event.target)
+      ) {
         setShowIngredientSuggestions(false)
       }
     }
@@ -104,16 +109,21 @@ function App() {
 
   const invalidateGeneration = () => {
     generationRequestId.current += 1
-    setGeneration((current) =>
-      current.status === 'loading' ? { status: 'idle' } : current,
-    )
+    setIsLoading(false)
+    setGeneration({ status: 'idle' })
   }
 
   const addIngredients = (newIngredients: string[]) => {
+    const cleanedIngredients = newIngredients
+      .map(cleanIngredientInput)
+      .filter(Boolean)
+    if (cleanedIngredients.length === 0) return
+
+    setError(null)
     invalidateGeneration()
     setIngredients((current) => {
       const currentNames = new Set(current.map(normalizeIngredient))
-      const uniqueAdditions = newIngredients.filter((item) => {
+      const uniqueAdditions = cleanedIngredients.filter((item) => {
         const key = normalizeIngredient(item)
         if (!key || currentNames.has(key)) return false
         currentNames.add(key)
@@ -125,8 +135,13 @@ function App() {
 
   const handleGenerate = async () => {
     setShowIngredientSuggestions(false)
+    setIsLoading(true)
+    setError(null)
+    setGeneration({ status: 'idle' })
+    setSelectedRecipe(null)
     if (ingredients.length === 0) {
       generationRequestId.current += 1
+      setIsLoading(false)
       setGeneration({
         status: 'result',
         result: {
@@ -136,16 +151,20 @@ function App() {
       })
       return
     }
-
     const requestId = ++generationRequestId.current
-    setGeneration({ status: 'loading' })
     try {
       const generated = await generateRecipe([...ingredients], timeFilter)
       if (requestId === generationRequestId.current) {
-        if (generated.status === 'success') {
+        if (generated.status === 'invalidIngredients') {
+          setError(generated.message)
+          setGeneration({ status: 'idle' })
+          setSelectedRecipe(null)
+        } else if (generated.status === 'success') {
           setServings(generated.recipe.servings)
+          setGeneration({ status: 'result', result: generated })
+        } else {
+          setGeneration({ status: 'result', result: generated })
         }
-        setGeneration({ status: 'result', result: generated })
       }
     } catch (error) {
       if (requestId === generationRequestId.current) {
@@ -157,6 +176,10 @@ function App() {
               : "We couldn't create that recipe. Please try again.",
         })
       }
+    } finally {
+      if (requestId === generationRequestId.current) {
+        setIsLoading(false)
+      }
     }
   }
 
@@ -164,9 +187,6 @@ function App() {
     <div className="app-shell min-h-screen bg-cream text-ink">
       <header className="site-header">
         <a className="brand" href="#top" aria-label="culinAIry home">
-          <span className="brand-mark">
-            <CookingPot size={20} strokeWidth={1.8} />
-          </span>
           <span>culin<span className="brand-ai">AI</span>ry</span>
         </a>
         <nav className="main-nav" aria-label="Main navigation">
@@ -196,39 +216,105 @@ function App() {
               Tell us what you have and we’ll find the delicious in it.
             </p>
             <a className="hero-scroll-link" href="#create">
-              <span>Let’s make something</span>
-              <span className="hero-scroll-icon">
-                <ArrowDown aria-hidden="true" size={20} strokeWidth={2.2} />
-              </span>
+              <span>Open My Fridge</span>
+              <svg
+                aria-hidden="true"
+                className="hero-fridge-icon"
+                fill="none"
+                viewBox="0 0 28 28"
+              >
+                <rect
+                  className="fridge-interior-light"
+                  x="4.5"
+                  y="3.5"
+                  width="19"
+                  height="21"
+                  rx="1.5"
+                />
+                <g className="fridge-door fridge-door--left">
+                  <path d="M5.5 3.5h8.5v21H5.5A1.5 1.5 0 0 1 4 23V5a1.5 1.5 0 0 1 1.5-1.5Z" />
+                  <path className="fridge-handle" d="M11.5 9v4" />
+                </g>
+                <g className="fridge-door fridge-door--right">
+                  <path d="M14 3.5h8.5A1.5 1.5 0 0 1 24 5v18a1.5 1.5 0 0 1-1.5 1.5H14v-21Z" />
+                  <path className="fridge-handle" d="M16.5 9v4" />
+                </g>
+                <rect
+                  className="fridge-frame"
+                  x="4"
+                  y="3"
+                  width="20"
+                  height="22"
+                  rx="2"
+                />
+              </svg>
             </a>
           </div>
-          <div className="hero-visual">
-            <img
-              className="hero-image"
-              src="https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=1200&q=85"
-              alt="A colorful, fresh bowl of vegetables and greens"
-            />
-            <div className="hero-image-shade" />
-            <div className="hero-image-caption">
-              <span className="caption-kicker">A little inspiration</span>
-              <span className="caption-title">Made for real life.</span>
+          <div className="brand-showcase" aria-label="culinAIry recipe studio">
+            <div className="showcase-illustration" aria-hidden="true">
+              <div className="showcase-pot">
+                <svg
+                  aria-hidden="true"
+                  className="showcase-steam"
+                  fill="none"
+                  viewBox="0 0 72 56"
+                >
+                  <path d="M14 52c0-8 8-8 8-16s-8-8-8-16" />
+                  <path d="M36 52c0-8 8-8 8-16s-8-8-8-16" />
+                  <path d="M58 52c0-8-8-8-8-16s8-8 8-16" />
+                </svg>
+                <CookingPot size={154} strokeWidth={1.1} />
+              </div>
             </div>
+            <p className="showcase-wordmark">
+              culin<span className="brand-ai">AI</span>ry
+            </p>
+            <span className="showcase-caption">A recipe studio for every day</span>
           </div>
         </section>
 
         <section className="generator-section page-width" id="create">
           <div className="section-heading">
-            <div>
-              <span className="section-kicker">START WITH YOUR STASH</span>
-              <h2>What’s in your kitchen?</h2>
-            </div>
+            <span className="section-kicker">START WITH YOUR STASH</span>
             <span className="section-aside"><span className="status-dot" /> No grocery run required</span>
           </div>
 
           <div className="generator-panel">
+            <div className="generator-controls">
+              <div className="time-filter">
+                <span className="field-label">How much time do you have?</span>
+                <div className="filter-options" role="group" aria-label="Preparation time">
+                  {timeFilters.map((filter) => (
+                    <button
+                      aria-pressed={timeFilter === filter.id}
+                      className={`filter-option${timeFilter === filter.id ? ' is-selected' : ''}`}
+                      key={filter.id}
+                      onClick={() => {
+                        invalidateGeneration()
+                        setTimeFilter(filter.id)
+                      }}
+                      type="button"
+                    >
+                      {filter.id === 'fast' ? (
+                        <Flame className="filter-option-icon" size={20} />
+                      ) : filter.id === 'medium' ? (
+                        <Clock3 className="filter-option-icon" size={20} />
+                      ) : (
+                        <Sparkles className="filter-option-icon" size={20} />
+                      )}
+                      <span className="filter-option-copy">
+                        <span>{filter.label}</span>
+                        <small>{filter.detail}</small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             <div
-              className="ingredient-field"
-              ref={ingredientFieldRef}
+              className="ingredient-action-area"
+              ref={ingredientActionAreaRef}
               onBlurCapture={(event) => {
                 if (
                   !event.currentTarget.contains(
@@ -247,20 +333,61 @@ function App() {
                 }
               }}
             >
-              <label className="field-label" htmlFor="ingredient-entry">
-                Your ingredients
-              </label>
-              <IngredientInput
-                ingredients={ingredients}
-                onAddIngredients={addIngredients}
-                suggestionsOpen={showIngredientSuggestions}
-                onRemoveIngredient={(ingredient) => {
-                  invalidateGeneration()
-                  setIngredients((current) =>
-                    current.filter((item) => item !== ingredient),
-                  )
-                }}
-              />
+              <div className="ingredient-field">
+                <h2 className="ingredient-heading" id="ingredient-entry-label">
+                  What’s in your kitchen?
+                </h2>
+                <IngredientInput
+                  ingredients={ingredients}
+                  onAddIngredients={addIngredients}
+                  suggestionsOpen={showIngredientSuggestions}
+                  onRemoveIngredient={(ingredient) => {
+                    invalidateGeneration()
+                    setError(null)
+                    setIngredients((current) =>
+                      current.filter((item) => item !== ingredient),
+                    )
+                  }}
+                />
+              </div>
+
+              {error && (
+                <div
+                  className="mx-auto flex max-w-2xl items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-5 text-red-900 shadow-sm"
+                  role="alert"
+                >
+                  <TriangleAlert
+                    aria-hidden="true"
+                    className="mt-0.5 shrink-0 text-red-600"
+                    size={21}
+                  />
+                  <div>
+                    <h3 className="font-semibold">Invalid ingredients</h3>
+                    <p className="mt-1 text-sm leading-relaxed">{error}</p>
+                  </div>
+                </div>
+              )}
+
+              <button
+                className="generate-button transition-all duration-200"
+                disabled={isLoading}
+                onClick={handleGenerate}
+                type="button"
+              >
+                {isLoading ? (
+                  <>
+                    <LoaderCircle className="spin" size={18} />
+                    Finding your recipe
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={17} />
+                    Generate recipe
+                    <ArrowRight className="generate-arrow" size={16} />
+                  </>
+                )}
+              </button>
+
               {showIngredientSuggestions && (
                 <div
                   aria-label="Popular ingredient suggestions"
@@ -309,122 +436,92 @@ function App() {
                 </div>
               )}
             </div>
-
-            <button
-              className="generate-button transition-all duration-200"
-              disabled={generation.status === 'loading'}
-              onClick={handleGenerate}
-              type="button"
-            >
-              {generation.status === 'loading' ? (
-                <>
-                  <LoaderCircle className="spin" size={18} />
-                  Finding your recipe
-                </>
-              ) : (
-                <>
-                  <Sparkles size={17} />
-                  Generate recipe
-                  <ArrowRight className="generate-arrow" size={16} />
-                </>
-              )}
-            </button>
-            <div className="generator-controls">
-              <div className="time-filter">
-                <span className="field-label">How much time do you have?</span>
-                <div className="filter-options" role="group" aria-label="Preparation time">
-                  {timeFilters.map((filter) => (
-                    <button
-                      aria-pressed={timeFilter === filter.id}
-                      className={`filter-option${timeFilter === filter.id ? ' is-selected' : ''}`}
-                      key={filter.id}
-                      onClick={() => {
-                        invalidateGeneration()
-                        setTimeFilter(filter.id)
-                      }}
-                      type="button"
-                    >
-                      {filter.id === 'fast' ? (
-                        <Flame className="filter-option-icon" size={20} />
-                      ) : filter.id === 'medium' ? (
-                        <Clock3 className="filter-option-icon" size={20} />
-                      ) : (
-                        <Sparkles className="filter-option-icon" size={20} />
-                      )}
-                      <span className="filter-option-copy">
-                        <span>{filter.label}</span>
-                        <small>{filter.detail}</small>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
           </div>
         </section>
 
-        <section
-          aria-busy={generation.status === 'loading'}
-          aria-live="polite"
-          className="result-section page-width"
-          id="recipe-result"
-        >
-          {generation.status === 'loading' ? (
-            <div className="result-placeholder loading-state">
-              <span className="loading-icon"><LoaderCircle className="spin" size={23} /></span>
-              <div>
-                <h3>Finding the delicious in your ingredients…</h3>
-                <p>Give us a moment to put something lovely together.</p>
+        {(generation.status !== 'idle' || isLoading) && (
+          <section
+            aria-busy={isLoading}
+            aria-live="polite"
+            className="result-section page-width"
+            id="recipe-result"
+          >
+            {isLoading ? (
+              <div className="mx-auto w-full max-w-4xl">
+                <div className="overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-sm">
+                  <div className="grid md:grid-cols-[0.85fr_1.15fr]">
+                    <div className="min-h-56 animate-pulse bg-stone-200 md:min-h-80" />
+                    <div className="space-y-5 p-6 md:p-8">
+                      <div className="h-3 w-28 animate-pulse rounded bg-stone-200" />
+                      <div className="h-8 w-3/4 animate-pulse rounded bg-stone-200" />
+                      <div className="space-y-2">
+                        <div className="h-3 w-full animate-pulse rounded bg-stone-100" />
+                        <div className="h-3 w-5/6 animate-pulse rounded bg-stone-100" />
+                      </div>
+                      <div className="space-y-3 pt-3">
+                        <div className="h-4 w-36 animate-pulse rounded bg-stone-200" />
+                        <div className="h-3 w-full animate-pulse rounded bg-stone-100" />
+                        <div className="h-3 w-4/5 animate-pulse rounded bg-stone-100" />
+                        <div className="h-3 w-11/12 animate-pulse rounded bg-stone-100" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <p className="mt-5 text-center text-sm text-stone-500" role="status">
+                  Chef AI is composing your recipe...
+                </p>
               </div>
-            </div>
-          ) : generatedRecipe ? (
-            <RecipeCard
-              isFavorite={favorites.some(
-                (recipe) => recipe.id === generatedRecipe.id,
-              )}
-              onToggleFavorite={() => toggleFavorite(generatedRecipe)}
-              onOpenDetails={() => setSelectedRecipe(generatedRecipe)}
-              recipe={generatedRecipe}
-            />
-          ) : generation.status === 'result' &&
-            generation.result.status === 'empty' ? (
-            <div className="result-placeholder message-state">
-              <span className="placeholder-icon"><ChefHat size={23} /></span>
-              <div>
-                <h3>Let’s start with an ingredient.</h3>
-                <p>{generation.result.message}</p>
+            ) : generatedRecipe ? (
+              <>
+                <RecipeCard
+                  isFavorite={favorites.some(
+                    (recipe) => recipe.id === generatedRecipe.id,
+                  )}
+                  onToggleFavorite={() => toggleFavorite(generatedRecipe)}
+                  onOpenDetails={() => setSelectedRecipe(generatedRecipe)}
+                  recipe={generatedRecipe}
+                />
+                {generation.status === 'result' &&
+                  generation.result.status === 'success' &&
+                  generation.result.source === 'local' && (
+                    <p className="mt-4 text-center text-sm text-stone-500" role="status">
+                      Gemini is temporarily unavailable, so we generated a local recipe instead.
+                    </p>
+                  )}
+              </>
+            ) : generation.status === 'result' &&
+              generation.result.status === 'empty' ? (
+              <div className="result-placeholder message-state">
+                <span className="placeholder-icon"><ChefHat size={23} /></span>
+                <div>
+                  <h3>Let’s start with an ingredient.</h3>
+                  <p>{generation.result.message}</p>
+                </div>
               </div>
-            </div>
-          ) : generation.status === 'error' ? (
-            <div className="result-placeholder message-state">
-              <span className="placeholder-icon"><ChefHat size={23} /></span>
-              <div>
-                <h3>We hit a snag in the kitchen.</h3>
-                <p>{generation.message}</p>
+            ) : generation.status === 'error' ? (
+              <div className="result-placeholder message-state">
+                <span className="placeholder-icon"><ChefHat size={23} /></span>
+                <div>
+                  <h3>We hit a snag in the kitchen.</h3>
+                  <p>{generation.message}</p>
+                </div>
               </div>
-            </div>
-          ) : generation.status === 'idle' ? (
-            <div className="result-placeholder idle-state">
-              <span className="placeholder-icon"><CookingPot size={23} /></span>
-              <div>
-                <h3>Your next favorite is one ingredient away.</h3>
-                <p>Add what you have, choose your time, and let the kitchen inspiration begin.</p>
-              </div>
-              <div className="idle-details">
-                <span><Clock3 size={14} /> Your pace</span>
-                <span><UsersRound size={14} /> Your pantry</span>
-              </div>
-            </div>
-          ) : null}
-        </section>
+            ) : null}
+          </section>
+        )}
 
         <section className="favorites-section page-width" id="favorites">
           <div className="favorites-heading">
-            <div>
-              <span className="section-kicker">KEEP THE GOOD ONES</span>
-              <h2>Your saved recipes <span className="saved-total">{favorites.length}</span></h2>
-            </div>
-            <Heart className="favorites-heading-icon" size={22} />
+            <h2>
+              <Heart
+                aria-hidden="true"
+                className="favorites-heading-icon"
+                fill="currentColor"
+                size={23}
+              />
+              Keep the Good Ones
+              <span className="saved-total">{favorites.length}</span>
+            </h2>
           </div>
 
           {storageMessage && (
@@ -477,7 +574,6 @@ function App() {
 
       <footer className="site-footer page-width">
         <a className="brand footer-brand" href="#top">
-          <span className="brand-mark"><CookingPot size={17} strokeWidth={1.8} /></span>
           <span>culin<span className="brand-ai">AI</span>ry</span>
         </a>
         <span>Cook a little more creatively.</span>

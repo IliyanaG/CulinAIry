@@ -8,6 +8,42 @@ export const generatedRecipeImageUrl = unsplashImage(
   'photo-1556911220-bff31c812dba',
 )
 
+export const generatedRecipeCategoryImageUrls = {
+  baking: unsplashImage('photo-1578985545062-69928b1d9587'),
+  salads: unsplashImage('photo-1512621776951-a57141f2eefd'),
+  soups: unsplashImage('photo-1547592180-85f173990554'),
+  carbs: unsplashImage('photo-1551183053-bf91a1d81141'),
+  general: generatedRecipeImageUrl,
+}
+
+const generatedRecipeImageCategories = [
+  {
+    image: generatedRecipeCategoryImageUrls.baking,
+    keywords: ['cake', 'muffin', 'chocolate', 'sweet', 'dessert', 'pastry'],
+  },
+  {
+    image: generatedRecipeCategoryImageUrls.salads,
+    keywords: ['salad', 'fresh', 'green', 'bowl', 'veggie'],
+  },
+  {
+    image: generatedRecipeCategoryImageUrls.soups,
+    keywords: ['soup', 'stew', 'broth', 'warm'],
+  },
+  {
+    image: generatedRecipeCategoryImageUrls.carbs,
+    keywords: ['pasta', 'rice', 'noodle', 'toast', 'bread'],
+  },
+]
+
+export function getGeneratedRecipeImageUrl(title: string): string {
+  const normalizedTitle = title.toLowerCase()
+  return (
+    generatedRecipeImageCategories.find(({ keywords }) =>
+      keywords.some((keyword) => normalizedTitle.includes(keyword)),
+    )?.image ?? generatedRecipeCategoryImageUrls.general
+  )
+}
+
 const recipeDefinitions: Recipe[] = [
   {
     id: 'tomato-garlic-pasta',

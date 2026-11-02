@@ -1,5 +1,6 @@
 import { useState, type KeyboardEvent } from 'react'
 import { Plus, X } from 'lucide-react'
+import { cleanIngredientInput } from '../utils/ingredientInput'
 
 interface IngredientInputProps {
   ingredients: string[]
@@ -19,7 +20,7 @@ export function IngredientInput({
   const submitIngredients = (rawValue: string) => {
     const nextIngredients = rawValue
       .split(',')
-      .map((ingredient) => ingredient.trim())
+      .map(cleanIngredientInput)
       .filter(Boolean)
 
     if (nextIngredients.length > 0) {
@@ -54,6 +55,7 @@ export function IngredientInput({
       <input
         autoComplete="off"
         id="ingredient-entry"
+        aria-labelledby="ingredient-entry-label"
         aria-controls={suggestionsOpen ? 'ingredient-suggestion-popover' : undefined}
         aria-expanded={suggestionsOpen}
         aria-haspopup="true"

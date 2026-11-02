@@ -20,6 +20,12 @@ export interface Recipe {
   matchedIngredients: string[]
 }
 
+export interface InvalidIngredientsResponse {
+  invalidIngredients: true
+  message: string
+}
+
 export type RecipeGenerationResult =
-  | { status: 'success'; recipe: Recipe }
+  | { status: 'success'; recipe: Recipe; source: 'gemini' | 'local' }
+  | ({ status: 'invalidIngredients' } & InvalidIngredientsResponse)
   | { status: 'empty'; message: string }
