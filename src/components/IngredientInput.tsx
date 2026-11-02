@@ -5,12 +5,14 @@ interface IngredientInputProps {
   ingredients: string[]
   onAddIngredients: (ingredients: string[]) => void
   onRemoveIngredient: (ingredient: string) => void
+  suggestionsOpen: boolean
 }
 
 export function IngredientInput({
   ingredients,
   onAddIngredients,
   onRemoveIngredient,
+  suggestionsOpen,
 }: IngredientInputProps) {
   const [value, setValue] = useState('')
 
@@ -52,6 +54,9 @@ export function IngredientInput({
       <input
         autoComplete="off"
         id="ingredient-entry"
+        aria-controls={suggestionsOpen ? 'ingredient-suggestion-popover' : undefined}
+        aria-expanded={suggestionsOpen}
+        aria-haspopup="true"
         onChange={(event) => {
           if (event.target.value.includes(',')) {
             submitIngredients(event.target.value)

@@ -22,27 +22,33 @@ import {
 } from './services/mockRecipeGenerator'
 import type { Recipe, RecipeGenerationResult, TimeFilter } from './types/recipe'
 
-const ingredientSuggestions = [
-  'tomato',
-  'chicken',
-  'garlic',
-  'pasta',
-  'chickpea',
-  'spinach',
-  'egg',
-  'rice',
-  'mushroom',
-  'bell pepper',
-  'onion',
-  'potato',
-  'cucumber',
-  'avocado',
-  'salmon',
-  'tofu',
-  'lentils',
-  'zucchini',
-  'feta',
-  'broccoli',
+const ingredientSuggestionGroups = [
+  {
+    id: 'veggies',
+    title: 'Veggies',
+    icon: '🥬',
+    ingredients: [
+      'tomato',
+      'garlic',
+      'spinach',
+      'broccoli',
+      'carrot',
+      'onion',
+      'lemon',
+    ],
+  },
+  {
+    id: 'proteins',
+    title: 'Proteins',
+    icon: '🍗',
+    ingredients: ['chicken', 'egg', 'salmon', 'tofu', 'beef', 'lentils'],
+  },
+  {
+    id: 'pantry',
+    title: 'Pantry',
+    icon: '🌾',
+    ingredients: ['pasta', 'rice', 'chickpeas', 'olive oil', 'oats'],
+  },
 ]
 
 const timeFilters: { id: TimeFilter; label: string; detail: string }[] = [
@@ -59,6 +65,9 @@ type GenerationState =
 
 function App() {
   const [ingredients, setIngredients] = useState<string[]>([])
+  const [showIngredientSuggestions, setShowIngredientSuggestions] =
+    useState(false)
+  const ingredientFieldRef = useRef<HTMLDivElement>(null)
   const [servings, setServings] = useState(2)
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all')
   const [generation, setGeneration] = useState<GenerationState>({ status: 'idle' })
@@ -77,6 +86,21 @@ function App() {
     },
     [],
   )
+
+  useEffect(() => {
+    if (!showIngredientSuggestions) return
+
+    const handleOutsidePointerDown = (event: PointerEvent) => {
+      const field = ingredientFieldRef.current
+      if (field && event.target instanceof Node && !field.contains(event.target)) {
+        setShowIngredientSuggestions(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', handleOutsidePointerDown)
+    return () =>
+      document.removeEventListener('pointerdown', handleOutsidePointerDown)
+  }, [showIngredientSuggestions])
 
   const invalidateGeneration = () => {
     generationRequestId.current += 1
@@ -100,6 +124,7 @@ function App() {
   }
 
   const handleGenerate = async () => {
+    setShowIngredientSuggestions(false)
     if (ingredients.length === 0) {
       generationRequestId.current += 1
       setGeneration({
@@ -201,13 +226,34 @@ function App() {
           </div>
 
           <div className="generator-panel">
-            <div className="ingredient-field">
+            <div
+              className="ingredient-field"
+              ref={ingredientFieldRef}
+              onBlurCapture={(event) => {
+                if (
+                  !event.currentTarget.contains(
+                    event.relatedTarget as Node | null,
+                  )
+                ) {
+                  setShowIngredientSuggestions(false)
+                }
+              }}
+              onFocusCapture={(event) => {
+                if (
+                  event.target instanceof HTMLInputElement &&
+                  event.target.id === 'ingredient-entry'
+                ) {
+                  setShowIngredientSuggestions(true)
+                }
+              }}
+            >
               <label className="field-label" htmlFor="ingredient-entry">
                 Your ingredients
               </label>
               <IngredientInput
                 ingredients={ingredients}
                 onAddIngredients={addIngredients}
+                suggestionsOpen={showIngredientSuggestions}
                 onRemoveIngredient={(ingredient) => {
                   invalidateGeneration()
                   setIngredients((current) =>
@@ -215,28 +261,53 @@ function App() {
                   )
                 }}
               />
-              <div className="suggestion-row">
-                <span>Popular</span>
-                {ingredientSuggestions
-                  .filter(
-                    (ingredient) =>
-                      !ingredients.some(
-                        (selected) =>
-                          normalizeIngredient(selected) ===
-                          normalizeIngredient(ingredient),
-                      ),
-                  )
-                  .map((ingredient) => (
-                  <button
-                    className="suggestion-chip transition-colors duration-200"
-                    key={ingredient}
-                    onClick={() => addIngredients([ingredient])}
-                    type="button"
-                  >
-                    + {ingredient}
-                  </button>
-                  ))}
-              </div>
+              {showIngredientSuggestions && (
+                <div
+                  aria-label="Popular ingredient suggestions"
+                  className="ingredient-suggestion-popover"
+                  id="ingredient-suggestion-popover"
+                  role="group"
+                >
+                  {ingredientSuggestionGroups.map((group) => {
+                    const availableIngredients = group.ingredients.filter(
+                      (ingredient) =>
+                        !ingredients.some(
+                          (selected) =>
+                            normalizeIngredient(selected) ===
+                            normalizeIngredient(ingredient),
+                        ),
+                    )
+
+                    return (
+                      <section
+                        aria-label={group.title}
+                        className={`suggestion-group suggestion-group--${group.id}`}
+                        key={group.id}
+                      >
+                        <h3>
+                          <span aria-hidden="true">{group.icon}</span>
+                          {group.title}
+                        </h3>
+                        <div className="suggestion-chips">
+                          {availableIngredients.map((ingredient) => (
+                            <button
+                              className="suggestion-chip transition-colors duration-200"
+                              key={ingredient}
+                              onClick={() => {
+                                addIngredients([ingredient])
+                                setShowIngredientSuggestions(false)
+                              }}
+                              type="button"
+                            >
+                              {ingredient}
+                            </button>
+                          ))}
+                        </div>
+                      </section>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
             <button
