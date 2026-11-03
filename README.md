@@ -1,35 +1,58 @@
 # culinAIry
 
-culinAIry is a frontend-only recipe generator built with Vite, React, TypeScript, and Tailwind CSS. Add ingredients you have on hand, choose how much time you have, and get a recipe from a small local mock collection. Save recipes to browser LocalStorage for your next visit.
+culinAIry is a recipe generator built with React, TypeScript, and Vite. Add ingredients, choose a time limit, generate a recipe, adjust servings, and save favorites to browser LocalStorage.
 
-## Getting started
+Recipe generation now uses a small Node.js API server and the Groq API. The browser sends ingredient and time-filter data to the local server; only the server reads `GROQ_API_KEY`. The Vite development server proxies `/api` requests to this server.
+
+## Requirements
+
+- Node.js 20.12 or newer
+- A Groq API key available to the server process
+
+Create a root `.env.local` file from the example and set the key there:
+
+```env
+GROQ_API_KEY=your_groq_api_key
+```
+
+`.env.local` is ignored by Git. Never use a `VITE_` prefix for this key.
+
+Install dependencies:
 
 ```sh
 npm install
-npm run dev
 ```
+
+Start the backend and frontend independently in two terminals, from the project root:
+
+Terminal 1:
+
+```sh
+npm run dev:api
+```
+
+Terminal 2:
+
+```sh
+npm run dev:web
+```
+
+The frontend is served at `http://localhost:3000` and the API server listens at `http://localhost:5000`. The Groq key is not included in the frontend bundle. Groq credentials and request headers are not logged.
+
+## Recipe generation details
+
+The server calls Groq's Chat Completions API using the official `groq-sdk` package and model [`openai/gpt-oss-20b`](https://console.groq.com/docs/model/openai/gpt-oss-20b). Groq lists the model as a hosted production model and documents strict JSON Schema support for it in its [Structured Outputs guide](https://console.groq.com/docs/structured-outputs). The model page reports high inference throughput; actual availability and rate limits depend on the Groq account and current plan.
+
+Requests have an 8-second timeout and the SDK's automatic retries are disabled. The server retries at most once for transient network failures and HTTP 408, 429, or 5xx responses. A timeout, exhausted transient failure, or network error uses the existing local recipe generator. Recipe response validation, ingredient checks, and time filters are preserved. Obsolete requests are aborted when the user changes ingredients or filters.
+
+The Vite proxy and local API server are development setup. A deployed app must also run or host the API server, configure `GROQ_API_KEY` as a server-side secret, and route `/api` traffic to it.
 
 ## Available scripts
 
-- `npm run dev` — start the Vite development server.
-- `npm run build` — type-check and create a production build.
-- `npm run test` — run the recipe and favorite-storage tests.
-- `npm run lint` — lint the project with Oxlint.
-
-Recipe generation uses Gemini when configured. Transient Gemini HTTP errors (429 and 5xx) are retried up to three total attempts with exponential backoff and jitter; if those attempts fail, the app generates a local recipe and identifies it in the UI. Other errors are surfaced without retries. The app does not use a backend or user session. Favorite recipes are stored in the current browser's LocalStorage.
-
-## Gemini recipe generation
-
-Install the Gemini SDK:
-
-```sh
-npm install @google/generative-ai
-```
-
-Copy `.env.example` to `.env` in the project root and replace the placeholder:
-
-```env
-VITE_GEMINI_API_KEY=your_gemini_api_key
-```
-
-Restart the Vite dev server after changing environment variables. Vite embeds all `VITE_` variables in the client bundle, so this key is visible to users and may be abused. Restrict its usage and quotas in Google AI Studio; use a server-side proxy with a server-only key for production. Only exhausted transient Gemini errors trigger local fallback; authentication, configuration, response-validation, and other non-transient errors are surfaced to the user.
+- `npm run dev` — start the API server and Vite frontend together.
+- `npm run dev:api` — start the API server only.
+- `npm run dev:web` — start the Vite frontend only.
+- `npm run build` — type-check and create the frontend production build.
+- `npm test` — run unit tests.
+- `npm run lint` — lint the project.
+- `npm run preview` — preview the built frontend (requires a separately running API server for generation).

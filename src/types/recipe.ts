@@ -26,6 +26,6 @@ export interface InvalidIngredientsResponse {
 }
 
 export type RecipeGenerationResult =
-  | { status: 'success'; recipe: Recipe; source: 'gemini' | 'local' }
+  | { status: 'success'; recipe: Recipe; source: 'groq' | 'local' }
   | ({ status: 'invalidIngredients' } & InvalidIngredientsResponse)
   | { status: 'empty'; message: string }

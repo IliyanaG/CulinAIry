@@ -1,4 +1,4 @@
-import type { RecipeIngredient } from '../types/recipe'
+import type { RecipeIngredient } from '../types/recipe.ts'
 
 const fractionValues: Record<string, number> = {
   '½': 1 / 2,

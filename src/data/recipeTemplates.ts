@@ -1,5 +1,5 @@
-import type { Recipe } from '../types/recipe'
-import { withBaseQuantity } from '../utils/ingredientScaling'
+import type { Recipe } from '../types/recipe.ts'
+import { withBaseQuantity } from '../utils/ingredientScaling.ts'
 
 const unsplashImage = (photoId: string) =>
   `https://images.unsplash.com/${photoId}?auto=format&fit=crop&w=1100&q=85`

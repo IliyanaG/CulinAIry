@@ -4,14 +4,16 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -k -n API,WEB \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "node --watch --env-file=.env.local --import tsx server/index.ts",
+    "dev:web": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "vitest run",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
+    "groq-sdk": "^1.6.0",
     "lucide-react": "^1.64.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
@@ -22,9 +24,11 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.6.2",
+    "concurrently": "^9.2.5",
     "oxlint": "^0.17.0",
     "postcss": "^8.5.32",
     "tailwindcss": "^3.4.19",
+    "tsx": "^4.23.15",
     "typescript": "~5.8.3",
     "vite": "^6.4.5",
     "vitest": "^4.1.12"

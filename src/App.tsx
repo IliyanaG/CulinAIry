@@ -15,6 +15,7 @@ import { IngredientInput } from './components/IngredientInput'
 import { RecipeCard } from './components/RecipeCard'
 import { RecipeDetailsDialog } from './components/RecipeDetailsDialog'
 import { useFavorites } from './hooks/useFavorites'
+import { startGenerationRequest } from './utils/generationRequest'
 import {
   generateRecipe,
   normalizeIngredient,
@@ -74,6 +75,7 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null)
   const generationRequestId = useRef(0)
+  const generationController = useRef<AbortController | null>(null)
   const { favorites, storageMessage, toggleFavorite, removeFavorite } =
     useFavorites()
   const generatedRecipe =
@@ -84,6 +86,8 @@ function App() {
   useEffect(
     () => () => {
       generationRequestId.current += 1
+      generationController.current?.abort()
+      generationController.current = null
     },
     [],
   )
@@ -109,6 +113,8 @@ function App() {
 
   const invalidateGeneration = () => {
     generationRequestId.current += 1
+    generationController.current?.abort()
+    generationController.current = null
     setIsLoading(false)
     setGeneration({ status: 'idle' })
   }
@@ -134,8 +140,10 @@ function App() {
   }
 
   const handleGenerate = async () => {
+    const controller = startGenerationRequest(generationController)
+    if (!controller) return
+
     setShowIngredientSuggestions(false)
-    setIsLoading(true)
     setError(null)
     setGeneration({ status: 'idle' })
     setSelectedRecipe(null)
@@ -149,11 +157,16 @@ function App() {
           message: 'Add at least one ingredient to get your recipe started.',
         },
       })
+      generationController.current = null
       return
     }
+
     const requestId = ++generationRequestId.current
+    setIsLoading(true)
     try {
-      const generated = await generateRecipe([...ingredients], timeFilter)
+      const generated = await generateRecipe([...ingredients], timeFilter, {
+        signal: controller.signal,
+      })
       if (requestId === generationRequestId.current) {
         if (generated.status === 'invalidIngredients') {
           setError(generated.message)
@@ -167,7 +180,10 @@ function App() {
         }
       }
     } catch (error) {
-      if (requestId === generationRequestId.current) {
+      if (
+        requestId === generationRequestId.current &&
+        !controller.signal.aborted
+      ) {
         setGeneration({
           status: 'error',
           message:
@@ -178,6 +194,7 @@ function App() {
       }
     } finally {
       if (requestId === generationRequestId.current) {
+        generationController.current = null
         setIsLoading(false)
       }
     }
@@ -485,7 +502,7 @@ function App() {
                   generation.result.status === 'success' &&
                   generation.result.source === 'local' && (
                     <p className="mt-4 text-center text-sm text-stone-500" role="status">
-                      Gemini is temporarily unavailable, so we generated a local recipe instead.
+                      Groq is temporarily unavailable, so we generated a local recipe instead.
                     </p>
                   )}
               </>
