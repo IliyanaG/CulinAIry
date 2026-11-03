@@ -9,13 +9,25 @@ Recipe generation now uses a small Node.js API server and the Groq API. The brow
 - Node.js 20.12 or newer
 - A Groq API key available to the server process
 
-Create a root `.env.local` file from the example and set the key there:
+From the project root, create `.env.local` from the example:
+
+```sh
+cp .env.example .env.local
+```
+
+On Windows PowerShell, use:
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+Then set your Groq key in `.env.local`:
 
 ```env
 GROQ_API_KEY=your_groq_api_key
 ```
 
-`.env.local` is ignored by Git. Never use a `VITE_` prefix for this key.
+`.env.local` is ignored by Git. Never commit real API keys or other secrets, and never use a `VITE_` prefix for this key. Keep `.env.example` limited to placeholder values.
 
 Install dependencies:
 
